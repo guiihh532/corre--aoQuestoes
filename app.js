@@ -1,5 +1,5 @@
 /* Central de Comando MVT - estado local-first e compatibilidade com o POST legado. */
-const GOOGLE_API_URL = 'COLE_SUA_URL_DO_APPS_SCRIPT_AQUI';
+const GOOGLE_API_URL = 'https://script.google.com/macros/s/AKfycbyLPnia4-QXASaKFP_KaYeHjXY8ntqy_A4G-45XiF0vgDgAMzeWZ-uK3ErlODfDomWpVA/exec';
 const STORAGE_KEY = 'sefaz_mvt_state';
 const STORAGE_VERSION = 3;
 const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyLPnia4-QXASaKFP_KaYeHjXY8ntqy_A4G-45XiF0vgDgAMzeWZ-uK3ErlODfDomWpVA/exec';
