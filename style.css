@@ -142,6 +142,13 @@ body { background: radial-gradient(circle at top left, #d9e9f7 0, transparent 32
 #timer .focus-cue { grid-row: 6; }
 #timer .focus-resources { grid-column: 2; grid-row: 1 / span 7; max-width: none; margin: 0; max-height: 650px; overflow-y: auto; background: linear-gradient(145deg, #f8fbff, #f1f5ee); border: 1px solid rgba(255,255,255,.44); box-shadow: inset 0 1px 0 rgba(255,255,255,.65); }
 #timer .cycle-position { width: fit-content; margin-bottom: 8px; color: #dcecff; background: rgba(72, 127, 200, .22); border-color: rgba(156, 196, 241, .35); }
+.cycle-trail { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 12px; }
+.cycle-step { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid rgba(181, 201, 224, .28); border-radius: 5px; color: #bdc9da; background: rgba(255, 255, 255, .07); font-size: .7rem; font-weight: 800; }
+.cycle-step.current { border-color: #79afe4; color: #ffffff; background: #2b67a2; box-shadow: 0 0 0 2px rgba(121, 175, 228, .18); }
+.cycle-step.complete { border-color: #9acbb2; color: #215f43; background: #d9f0e2; }
+.cycle-step.complete.current { border-color: #74bc98; color: #16472f; background: #bfe6cf; box-shadow: 0 0 0 2px rgba(116, 188, 152, .2); }
+#timer .focus-cue.block-complete { background: linear-gradient(135deg, #def3e5, #f5fbf7); border-color: #9acbb2; }
+#timer .focus-cue.block-complete strong { color: #1b6544; }
 #timer .focus-progress-heading { color: #bdc9da; margin-top: 6px; }
 #timer .focus-progress-heading strong { color: #ffffff; }
 #timer .focus-progress { background: rgba(255,255,255,.12); margin-bottom: 16px; }
