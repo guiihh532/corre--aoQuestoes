@@ -53,6 +53,31 @@ const studyResources = [
         id: 'python-biblioteca-documentacao', assuntoId: 'programacao-dados-python-automacao', tipo: 'DOCUMENTACAO',
         titulo: 'Python: referência da linguagem e biblioteca', descricao: 'Referência oficial para sintaxe, exceções, arquivos e biblioteca padrão.',
         url: 'https://docs.python.org/3/reference/', fonte: 'Python Software Foundation', oficial: true, prioridade: 1, ativo: true, atualizadoEm: '2026-09-04'
+    },
+    {
+        id: 'constituicao-direito-publico', assuntoId: 'direito-publico-constitucional', tipo: 'LEI',
+        titulo: 'Constituição da República Federativa do Brasil', descricao: 'Texto constitucional consolidado para princípios, direitos fundamentais e organização do Estado.',
+        url: 'https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm', fonte: 'Planalto', oficial: true, prioridade: 1, ativo: true, atualizadoEm: '2026-09-04'
+    },
+    {
+        id: 'lei-9784-processo-administrativo', assuntoId: 'direito-publico-administrativo', tipo: 'LEI',
+        titulo: 'Lei nº 9.784/1999 - Processo Administrativo Federal', descricao: 'Normas básicas sobre processo administrativo no âmbito da Administração Pública Federal.',
+        url: 'https://www.planalto.gov.br/ccivil_03/leis/l9784.htm', fonte: 'Planalto', oficial: true, prioridade: 1, ativo: true, atualizadoEm: '2026-09-04'
+    },
+    {
+        id: 'ctn-direito-tributario', assuntoId: 'direito-publico-tributario', tipo: 'LEI',
+        titulo: 'Código Tributário Nacional - Lei nº 5.172/1966', descricao: 'Normas gerais de direito tributário em fonte oficial.',
+        url: 'https://www.planalto.gov.br/ccivil_03/leis/l5172compilado.htm', fonte: 'Planalto', oficial: true, prioridade: 1, ativo: true, atualizadoEm: '2026-09-04'
+    },
+    {
+        id: 'codigo-civil-direito-privado', assuntoId: 'direito-privado-civil', tipo: 'LEI',
+        titulo: 'Código Civil - Lei nº 10.406/2002', descricao: 'Texto oficial do Código Civil para pessoas, obrigações, contratos, responsabilidade e direitos reais.',
+        url: 'https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm', fonte: 'Planalto', oficial: true, prioridade: 1, ativo: true, atualizadoEm: '2026-09-04'
+    },
+    {
+        id: 'cdc-direito-consumidor', assuntoId: 'direito-privado-consumidor', tipo: 'LEI',
+        titulo: 'Código de Defesa do Consumidor - Lei nº 8.078/1990', descricao: 'Texto oficial sobre relações de consumo e proteção contratual.',
+        url: 'https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm', fonte: 'Planalto', oficial: true, prioridade: 1, ativo: true, atualizadoEm: '2026-09-04'
     }
 ];
 window.studyResources = studyResources;
