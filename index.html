@@ -1,0 +1,13 @@
+// Exemplo de como o seu JS no frontend fará a requisição
+async function enviarMetricas(dados) {
+  const urlApi = 'https://script.google.com/macros/s/AKfycbyLPnia4-QXASaKFP_KaYeHjXY8ntqy_A4G-45XiF0vgDgAMzeWZ-uK3ErlODfDomWpVA/exec';
+  
+  await fetch(urlApi, {
+    method: 'POST',
+    mode: 'no-cors', // Evita problemas de CORS no frontend simples
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados)
+  });
+  
+  alert('Métricas salvas com sucesso!');
+}
