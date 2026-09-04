@@ -3,162 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agente Sefaz SC - Foco Total</title>
+    <title>Central de Comando MVT | SEFAZ SC</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="edital.js"></script>
 </head>
 <body>
-
     <div class="app-container">
-        <!-- Menu Lateral -->
         <aside class="sidebar">
-            <div class="logo">
-                <i class="fa-solid fa-bolt"></i>
-                <span>Sefaz SC Target</span>
-            </div>
-            
-            <div class="countdown-widget">
-                <div class="countdown-number" id="daysLeft">79</div>
-                <div class="countdown-text">Dias para a Prova</div>
-                <div class="countdown-date"><i class="fa-regular fa-calendar"></i> 22 Nov 2026</div>
-            </div>
-
-            <nav class="menu">
-                <button class="menu-btn active" data-target="dashboard"><i class="fa-solid fa-house"></i> Visão Geral</button>
-                <button class="menu-btn" data-target="timer"><i class="fa-solid fa-stopwatch"></i> Ciclo de Estudo</button>
-                <button class="menu-btn" data-target="register"><i class="fa-solid fa-pen-to-square"></i> Lançar Bateria</button>
-                <button class="menu-btn" data-target="history"><i class="fa-solid fa-chart-pie"></i> Análise Gráfica</button>
-                <button class="menu-btn special-btn" data-target="method"><i class="fa-solid fa-book-open-reader"></i> Método & Material</button>
+            <div class="logo"><i class="fa-solid fa-compass"></i><span>MVT Command</span></div>
+            <div class="countdown-widget"><div class="countdown-number" id="daysLeft">--</div><div class="countdown-text">Dias para a prova</div><div class="countdown-date"><i class="fa-regular fa-calendar"></i> 22 Nov 2026</div></div>
+            <nav class="menu" aria-label="Navegação principal">
+                <button class="menu-btn active" data-target="dashboard"><i class="fa-solid fa-crosshairs"></i> Central de comando</button>
+                <button class="menu-btn" data-target="timer"><i class="fa-solid fa-stopwatch"></i> Modo foco</button>
+                <button class="menu-btn" data-target="register"><i class="fa-solid fa-pen-to-square"></i> Registrar questões</button>
+                <button class="menu-btn" data-target="history"><i class="fa-solid fa-chart-column"></i> Evolução</button>
+                <button class="menu-btn" data-target="method"><i class="fa-solid fa-map"></i> Mapa e método</button>
             </nav>
+            <div class="sidebar-note"><span id="passadaValue">Passada 1</span><small>ciclo rotativo ativo</small></div>
         </aside>
-
-        <!-- Área Principal -->
         <main class="content">
-            
-            <!-- TELA 1: DASHBOARD -->
             <section id="dashboard" class="tab-content active">
-                <header class="motivational-header">
-                    <h2>Dashboard de Desempenho</h2>
-                    <p id="motivationalQuote" class="quote">"A dor da disciplina é menor que a dor do arrependimento."</p>
-                </header>
-                <div class="cards-grid">
-                    <div class="card meta-diaria">
-                        <h3><i class="fa-solid fa-bullseye"></i> Meta Diária</h3>
-                        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-                        <p>Total hoje: <strong id="totalHojeTxt">0</strong> questões</p>
-                        <div id="tierBadge" class="tier-badge">Aquecimento</div>
-                    </div>
-                    <div class="card radar">
-                        <h3><i class="fa-solid fa-triangle-exclamation"></i> Radar de Atenção (< 70%)</h3>
-                        <ul id="radarList" class="radar-list"></ul>
-                        <p class="radar-tip">Recomendação: Aplique o Estudo Reverso nestas matérias.</p>
+                <header class="page-header"><div><span class="eyebrow">SEFAZ SC · Auditor Fiscal TI</span><h1>Central de comando</h1><p id="motivationalQuote" class="quote">Carregando rota de estudo...</p></div><div class="cycle-chip"><i class="fa-solid fa-repeat"></i> MVT ativo</div></header>
+                <div class="command-layout">
+                    <article class="next-action" id="nextAction"><div class="loading-line"></div><p>Calculando a próxima ação...</p></article>
+                    <div class="metric-stack">
+                        <div class="metric-card"><span class="metric-icon red"><i class="fa-solid fa-fire"></i></span><div><strong id="countRed">0</strong><small>Vermelhos</small></div></div>
+                        <div class="metric-card"><span class="metric-icon yellow"><i class="fa-solid fa-eye"></i></span><div><strong id="countYellow">0</strong><small>Amarelos</small></div></div>
+                        <div class="metric-card"><span class="metric-icon green"><i class="fa-solid fa-check"></i></span><div><strong id="countGreen">0</strong><small>Verdes</small></div></div>
+                        <div class="metric-card"><span class="metric-icon blue"><i class="fa-solid fa-flag"></i></span><div><strong id="debtValue">0</strong><small>Dívidas abertas</small></div></div>
                     </div>
                 </div>
-            </section>
-
-            <!-- TELA 2: MODO FOCO (CICLO DE ESTUDO) -->
-            <section id="timer" class="tab-content">
-                <header>
-                    <h2>Modo Foco: Ciclo Rotativo</h2>
-                    <p>Concentre-se 100%. O alarme soará ao fim do bloco.</p>
-                </header>
-                <div class="timer-container">
-                    <div class="block-info">
-                        <h3 id="currentBlockTitle">Bloco 1: Finanças Públicas</h3>
-                        <p id="currentBlockDesc">50 min Leitura/Vídeo + 30 min Questões</p>
-                    </div>
-                    <div class="timer-display" id="timerDisplay">01:20:00</div>
-                    <div class="timer-controls">
-                        <button id="btnPrevBlock" class="btn secondary"><i class="fa-solid fa-backward"></i></button>
-                        <button id="btnStartTimer" class="btn primary btn-large"><i class="fa-solid fa-play"></i> Iniciar Bloco</button>
-                        <button id="btnNextBlock" class="btn secondary"><i class="fa-solid fa-forward"></i></button>
-                    </div>
-                </div>
-                <div class="cycle-timeline" id="cycleTimeline"></div>
-            </section>
-
-            <!-- TELA 3: LANÇAR BATERIA -->
-            <section id="register" class="tab-content">
-                <header>
-                    <h2>Registrar Bateria de Questões</h2>
-                </header>
-                <div class="card form-card">
-                    <form id="metricasForm">
-                        <div class="row">
-                            <div class="form-group">
-                                <label>Disciplina</label>
-                                <select id="disciplina" required>
-                                    <option value="" disabled selected>Selecione a matéria...</option>
-                                    <option value="Finanças Públicas">Finanças Públicas</option>
-                                    <option value="Direito Administrativo">Direito Administrativo</option>
-                                    <option value="Direito Constitucional">Direito Constitucional</option>
-                                    <option value="Legislação SC">Legislação SC</option>
-                                    <option value="Língua Portuguesa">Língua Portuguesa</option>
-                                    <option value="Raciocínio Lógico">Raciocínio Lógico (RLM)</option>
-                                    <option value="Estatística">Estatística</option>
-                                    <option value="Governança de TI">Governança de TI</option>
-                                    <option value="Eng. de Software">Engenharia de Software</option>
-                                    <option value="Bancos de Dados">Bancos de Dados / SQL</option>
-                                    <option value="Engenharia de Dados">Engenharia de Dados</option>
-                                    <option value="Ciência de Dados / IA">Ciência de Dados / IA</option>
-                                    <option value="Infra / Redes / Cloud">Infra e Nuvem</option>
-                                    <option value="Segurança da Informação">Segurança da Informação</option>
-                                    <option value="Auditoria de TI">Auditoria de TI</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Assunto Específico</label>
-                                <input type="text" id="assunto" placeholder="Ex: Licitações, APF, Crase..." required>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="form-group"><label>Feitas</label><input type="number" id="feitas" min="1" required></div>
-                            <div class="form-group"><label>Acertos</label><input type="number" id="acertos" min="0" required></div>
-                            <div class="form-group"><label>Erros</label><input type="number" id="erros" readonly></div>
-                        </div>
-                        <button type="submit" class="btn primary full-width"><i class="fa-solid fa-check"></i> Registrar e Atualizar Gráficos</button>
-                        <div id="statusMsg" class="status-msg"></div>
-                    </form>
+                <div class="cards-grid dashboard-grid">
+                    <div class="card"><div class="card-heading"><h3><i class="fa-solid fa-chart-pie"></i> Cobertura do edital</h3><strong id="coverageValue">0%</strong></div><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div><p class="muted">Assuntos estudados em relação ao mapa estruturado.</p></div>
+                    <div class="card"><div class="card-heading"><h3><i class="fa-solid fa-bullseye"></i> Meta de hoje</h3><strong><span id="totalHojeTxt">0</span> questões</strong></div><p class="muted">Registre baterias para atualizar a rota, a confiança e a passada.</p></div>
+                    <div class="card radar"><div class="card-heading"><h3><i class="fa-solid fa-triangle-exclamation"></i> Radar de atenção</h3></div><ul id="radarList" class="radar-list"></ul></div>
                 </div>
             </section>
-
-            <!-- TELA 4: ANÁLISE GRÁFICA -->
-            <section id="history" class="tab-content">
-                <header>
-                    <h2>Evolução e Análise</h2>
-                    <p>Dados frios para ajustes precisos na sua rota.</p>
-                </header>
-                <div class="chart-container">
-                    <canvas id="performanceChart"></canvas>
-                </div>
-            </section>
-
-            <!-- TELA 5: MÉTODO & MATERIAL -->
-            <section id="method" class="tab-content">
-                <header>
-                    <h2>Método Carlos André & Materiais</h2>
-                    <p>O pilar da sua aprovação: Revisão, Métrica e Ciclo.</p>
-                </header>
-                <div class="method-grid">
-                    <div class="card method-rules">
-                        <h3><i class="fa-solid fa-scale-balanced"></i> Os 3 Pilares do Método</h3>
-                        <ul>
-                            <li><strong>1. Ciclo Rotativo Fixo:</strong> Estude na ordem do ciclo. Parou no Bloco X hoje? Amanhã continue de onde parou.</li>
-                            <li><strong>2. Estudo Reverso:</strong> Vá direto para as questões. Só volte à teoria naquilo que errar.</li>
-                            <li><strong>3. Revisão de 24h:</strong> Gaste 10 minutos diários relendo seus erros anteriores.</li>
-                        </ul>
-                    </div>
-                    <div class="card drive-embed">
-                        <h3><i class="fa-brands fa-google-drive"></i> Seu Material (PDF)</h3>
-                        <iframe src="https://drive.google.com/file/d/1Y9rSthEv36EAhlLIHKeAzJLx-QOmoEeR/preview" width="100%" height="450" allow="autoplay"></iframe>
-                    </div>
-                </div>
-            </section>
-
+            <section id="timer" class="tab-content"><header><span class="eyebrow">CICLO ROTATIVO</span><h1>Modo foco</h1><p>O bloco e a posição do ciclo permanecem salvos mesmo quando a página é recarregada.</p></header><div class="timer-container"><div class="cycle-position" id="cyclePosition">Passada 1 · Ciclo 1 · Bloco 1</div><div class="focus-progress-heading"><span>Progresso do ciclo</span><strong id="cycleProgressValue">0%</strong></div><div class="focus-progress"><div class="focus-progress-fill" id="cycleProgressFill"></div></div><div class="block-info"><h2 id="currentBlockTitle">Bloco 1</h2><p id="currentBlockDesc">80 minutos</p></div><div class="timer-display" id="timerDisplay">01:20:00</div><div class="timer-controls"><button id="btnPrevBlock" class="btn secondary" aria-label="Bloco anterior"><i class="fa-solid fa-backward"></i></button><button id="btnStartTimer" class="btn primary btn-large"><i class="fa-solid fa-play"></i> Iniciar bloco</button><button id="btnNextBlock" class="btn secondary" aria-label="Próximo bloco"><i class="fa-solid fa-forward"></i></button></div></div></section>
+            <section id="register" class="tab-content"><header><span class="eyebrow">AFERIÇÃO</span><h1>Registrar questões</h1><p>Associe cada bateria ao menor nível útil do edital.</p></header><div class="card form-card"><form id="metricasForm"><div class="row"><div class="form-group"><label for="disciplina">Disciplina</label><select id="disciplina" required><option value="" disabled selected>Selecione...</option><option>Finanças Públicas</option><option>Governança e Gestão de TI</option><option>Engenharia e Arquitetura de Software</option><option>Banco de Dados e SQL</option><option>Data Warehouse / Data Engineering</option><option>BI / Analytics / Visualização</option><option>Programação e Automação para Dados</option><option>Estatística / Data Science / Machine Learning</option><option>IA / NLP / IA Generativa</option><option>Infraestrutura / Redes / Cloud</option><option>Segurança / Privacidade</option><option>Auditoria / Controle com Tecnologia</option><option>Inglês Técnico</option></select></div><div class="form-group"><label for="assunto">Assunto</label><input id="assunto" required placeholder="Ex.: Lei de Responsabilidade Fiscal"></div></div><div class="row"><div class="form-group"><label for="subtopico">Subtópico</label><input id="subtopico" placeholder="Ex.: Despesa com pessoal"></div><div class="form-group"><label for="fonte">Banca / fonte</label><input id="fonte" placeholder="Ex.: FGV, Tec Concursos"></div></div><div class="row"><div class="form-group"><label for="feitas">Questões</label><input type="number" id="feitas" min="1" required></div><div class="form-group"><label for="acertos">Acertos</label><input type="number" id="acertos" min="0" required></div><div class="form-group"><label for="erros">Erros</label><input type="number" id="erros" readonly value="0"></div></div><button type="submit" class="btn primary full-width"><i class="fa-solid fa-check"></i> Aferir e atualizar MVT</button><div id="statusMsg" class="status-msg" role="status"></div></form></div></section>
+            <section id="history" class="tab-content"><header><span class="eyebrow">TRAQUEAMENTO</span><h1>Evolução</h1><p>Use os dados para decidir onde colocar o próximo bloco.</p></header><div class="chart-container"><canvas id="performanceChart"></canvas></div></section>
+            <section id="method" class="tab-content"><header><span class="eyebrow">MAPA · VEÍCULO · TRAQUEAMENTO</span><h1>Mapa e método</h1><p>O sistema combina edital estruturado, desempenho e decisão de estudo.</p></header><div class="method-grid"><div class="card method-rules"><h3><i class="fa-solid fa-route"></i> Regras MVT</h3><ul><li><strong>Vermelho:</strong> teoria base e bateria direcionada.</li><li><strong>Amarelo:</strong> refinamento, legislação e revisão de erros.</li><li><strong>Verde:</strong> manutenção, questões e estudo reverso.</li><li><strong>Confiança:</strong> volume de questões evita conclusões fortes com amostras pequenas.</li><li><strong>Passadas:</strong> a evolução horizontal não exige zerar um assunto.</li></ul></div><div class="card drive-embed"><h3><i class="fa-solid fa-database"></i> Estado local</h3><p>O progresso é salvo no navegador e pode continuar funcionando sem o Apps Script. O payload legado permanece disponível para sincronização quando uma URL real for configurada.</p><h3><i class="fa-brands fa-google-drive"></i> Material</h3><iframe src="https://drive.google.com/file/d/1Y9rSthEv36EAhlLIHKeAzJLx-QOmoEeR/preview" title="Material de estudo no Google Drive" width="100%" height="450" allow="autoplay"></iframe></div></div></section>
         </main>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>

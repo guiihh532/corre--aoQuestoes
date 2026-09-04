@@ -1,265 +1,70 @@
-// --- CONFIGURAÇÃO DA SUA PLANILHA GOOGLE NA NUVEM ---
-// Cole a URL gerada no Google Apps Script abaixo entre as aspas:
+/* Central de Comando MVT - estado local-first e compatibilidade com o POST legado. */
 const GOOGLE_API_URL = 'COLE_SUA_URL_DO_APPS_SCRIPT_AQUI';
-
-// --- DADOS DA PROVA E MOTIVACIONAL ---
-const examDate = new Date('2026-11-22T00:00:00');
-const quotes = [
-    "A dor da disciplina é menor que a dor do arrependimento.",
-    "O seu futuro na Sefaz SC está sendo construído no bloco de hoje.",
-    "O Estudo Reverso te poupa tempo. Foque onde o radar aponta vermelho.",
-    "Você tem 4 horas hoje. Faça valer cada segundo.",
-    "Consistência vence a intensidade. Siga o ciclo."
-];
-
-// --- ALARME SONORO ---
-const alarmSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-
-// --- CICLO DE ESTUDOS ---
+const STORAGE_KEY = 'sefaz_mvt_state';
+const STORAGE_VERSION = 2;
+const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyLPnia4-QXASaKFP_KaYeHjXY8ntqy_A4G-45XiF0vgDgAMzeWZ-uK3ErlODfDomWpVA/exec';
+const DEFAULT_CONFIG = { examDate: '2026-11-22', blockMinutes: 80, redBelow: 70, yellowBelow: 85 };
+const quotes = ['A dor da disciplina e menor que a dor do arrependimento.', 'O seu futuro na Sefaz SC esta sendo construido no bloco de hoje.', 'Consistencia vence a intensidade. Siga o ciclo.'];
 const studyBlocks = [
-    { title: "Bloco 1: Finanças Públicas", desc: "50 min Leitura/Vídeo + 30 min Questões" },
-    { title: "Bloco 2: Específicos TI", desc: "1h20min Bateria de Questões FCC" },
-    { title: "Bloco 3: Dir. Administrativo / Constitucional", desc: "50 min Lei Seca + 30 min Questões" },
-    { title: "Bloco 4: Estatística / Mat. Financeira", desc: "20 min Fórmulas + 1h Questões" },
-    { title: "Bloco 5: Língua Portuguesa", desc: "1h20min Questões (Foco: Reescritura/Crase)" },
-    { title: "Bloco 6: Governança TI / Eng. Software", desc: "40 min Resumo + 40 min Questões" },
-    { title: "Bloco 7: Legislação SC / Ética", desc: "50 min Lei Seca + 30 min Questões" },
-    { title: "Bloco 8: RLM / LGPD", desc: "1h20min Bateria de Questões" }
+    { title: 'Financas Publicas', desc: 'Base legal, orcamento e questoes direcionadas' },
+    { title: 'Governanca e Gestao de TI', desc: 'COBIT, ITIL, contratos e projetos' },
+    { title: 'Engenharia e Arquitetura de Software', desc: 'Requisitos, arquitetura, testes e desenvolvimento' },
+    { title: 'Banco de Dados e SQL', desc: 'Modelagem, SQL, transacoes e otimizacao' },
+    { title: 'Data Engineering e BI', desc: 'DW, ETL, analytics e visualizacao' },
+    { title: 'Programacao, DS e IA', desc: 'Python, estatistica, ML e IA generativa' },
+    { title: 'Infraestrutura e Seguranca', desc: 'Redes, cloud, seguranca e LGPD' },
+    { title: 'Auditoria e Ingles Tecnico', desc: 'Controle com tecnologia e leitura tecnica' }
 ];
-
-let currentBlockIndex = parseInt(localStorage.getItem('sefaz_current_block')) || 0;
-let timerInterval;
-let timeLeft = 80 * 60; // 1h20m
-let isTimerRunning = false;
+const alarmSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+let state;
+let timerInterval = null;
 let myChart = null;
 
-// --- INICIALIZAÇÃO ---
-document.addEventListener('DOMContentLoaded', () => {
-    updateCountdown();
-    setRandomQuote();
-    setupNavigation();
-    verificarViradaDeDia();
-    updateDashboard();
-    setupCycleUI();
-    renderChart();
-});
-
-function updateCountdown() {
-    const now = new Date();
-    const diff = examDate - now;
-    const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    document.getElementById('daysLeft').innerText = daysLeft > 0 ? daysLeft : 0;
+function createDefaultState() {
+    return { schemaVersion: STORAGE_VERSION, config: { ...DEFAULT_CONFIG }, mvt: { passadaAtual: 1, cicloAtual: 1, blocoAtual: 0 }, timer: { remainingSeconds: DEFAULT_CONFIG.blockMinutes * 60, running: false, startedAt: null }, assuntos: {}, errors: [], sessions: [], pendingSync: [], daily: { date: '', questions: 0 } };
 }
-
-function setRandomQuote() {
-    const quote = quotes[Math.floor(Math.random() * quotes.length)];
-    document.getElementById('motivationalQuote').innerText = `"${quote}"`;
-}
-
-function setupNavigation() {
-    const btns = document.querySelectorAll('.menu-btn');
-    const sections = document.querySelectorAll('.tab-content');
-
-    btns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            btns.forEach(b => b.classList.remove('active'));
-            sections.forEach(s => s.classList.remove('active'));
-            
-            btn.classList.add('active');
-            document.getElementById(btn.dataset.target).classList.add('active');
-            
-            if(btn.dataset.target === 'history') renderChart();
-        });
+function readJson(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } }
+function slugify(value) { return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
+function createSubject(id, disciplina, assunto, subtopico) { return { id, disciplina, assunto, subtopico, peso: null, estudado: false, questoes: 0, acertos: 0, erros: 0, divida: false, dividaOrigem: '', reincidencias: 0, ultimaSessao: null, ultimaAfericao: null, passadaAtual: 1, historico: [] }; }
+function migrateState() {
+    const saved = readJson(STORAGE_KEY, null);
+    const next = saved && saved.schemaVersion ? { ...createDefaultState(), ...saved } : createDefaultState();
+    next.config = { ...DEFAULT_CONFIG, ...(next.config || {}) }; next.mvt = { ...createDefaultState().mvt, ...(next.mvt || {}) }; next.timer = { ...createDefaultState().timer, ...(next.timer || {}) };
+    next.assuntos = next.assuntos || {}; next.errors = next.errors || []; next.sessions = next.sessions || []; next.pendingSync = next.pendingSync || [];
+    if (!saved) Object.entries(readJson('sefaz_stats', {})).forEach(([disciplina, dados]) => {
+        const id = `legacy-${slugify(disciplina)}-nao-classificado`; const subject = next.assuntos[id] || createSubject(id, disciplina, 'Não classificado', 'Não classificado');
+        subject.questoes += Number(dados.feitas) || 0; subject.acertos += Number(dados.acertos) || 0; subject.erros = subject.questoes - subject.acertos; subject.estudado = subject.questoes > 0;
+        if (subject.questoes) subject.historico.push({ passada: 1, questoes: subject.questoes, acertos: subject.acertos, data: new Date().toISOString() }); next.assuntos[id] = subject;
     });
+    if (window.edital) window.edital.forEach(discipline => discipline.assuntos.forEach(topic => topic.subtopicos.forEach(subtopico => {
+        const id = `${discipline.id}-${topic.id}-${slugify(subtopico)}`;
+        if (!next.assuntos[id]) next.assuntos[id] = createSubject(id, discipline.nome, topic.nome, subtopico);
+    })));
+    next.schemaVersion = STORAGE_VERSION; return next;
 }
-
-function setupCycleUI() {
-    const timeline = document.getElementById('cycleTimeline');
-    timeline.innerHTML = '';
-    
-    studyBlocks.forEach((block, index) => {
-        const node = document.createElement('div');
-        node.className = `cycle-node ${index === currentBlockIndex ? 'active' : ''}`;
-        node.innerText = `B${index + 1}`;
-        timeline.appendChild(node);
-    });
-
-    document.getElementById('currentBlockTitle').innerText = studyBlocks[currentBlockIndex].title;
-    document.getElementById('currentBlockDesc').innerText = studyBlocks[currentBlockIndex].desc;
-    updateTimerDisplay();
-}
-
-function updateTimerDisplay() {
-    const h = Math.floor(timeLeft / 3600).toString().padStart(2, '0');
-    const m = Math.floor((timeLeft % 3600) / 60).toString().padStart(2, '0');
-    const s = (timeLeft % 60).toString().padStart(2, '0');
-    document.getElementById('timerDisplay').innerText = `${h}:${m}:${s}`;
-}
-
-document.getElementById('btnStartTimer').addEventListener('click', function() {
-    if (isTimerRunning) {
-        clearInterval(timerInterval);
-        this.innerHTML = '<i class="fa-solid fa-play"></i> Continuar Bloco';
-        this.style.background = 'var(--accent)';
-    } else {
-        timerInterval = setInterval(() => {
-            if (timeLeft > 0) {
-                timeLeft--;
-                updateTimerDisplay();
-            } else {
-                clearInterval(timerInterval);
-                alarmSound.play();
-                alert('Bloco Concluído! O alarme tocou. Vá para a aba "Lançar Bateria" e registre suas métricas.');
-                isTimerRunning = false;
-                this.innerHTML = '<i class="fa-solid fa-play"></i> Iniciar Próximo';
-                this.style.background = 'var(--accent)';
-            }
-        }, 1000);
-        this.innerHTML = '<i class="fa-solid fa-pause"></i> Pausar Foco';
-        this.style.background = 'var(--danger)';
-    }
-    isTimerRunning = !isTimerRunning;
-});
-
-function changeBlock(direction) {
-    clearInterval(timerInterval);
-    isTimerRunning = false;
-    document.getElementById('btnStartTimer').innerHTML = '<i class="fa-solid fa-play"></i> Iniciar Bloco';
-    document.getElementById('btnStartTimer').style.background = 'var(--accent)';
-    
-    currentBlockIndex += direction;
-    if (currentBlockIndex < 0) currentBlockIndex = studyBlocks.length - 1;
-    if (currentBlockIndex >= studyBlocks.length) currentBlockIndex = 0;
-    
-    localStorage.setItem('sefaz_current_block', currentBlockIndex);
-    timeLeft = 80 * 60;
-    setupCycleUI();
-}
-
-document.getElementById('btnNextBlock').addEventListener('click', () => changeBlock(1));
-document.getElementById('btnPrevBlock').addEventListener('click', () => changeBlock(-1));
-
-function verificarViradaDeDia() {
-    const hoje = new Date().toLocaleDateString();
-    if (localStorage.getItem('sefaz_data') !== hoje) {
-        localStorage.setItem('sefaz_data', hoje);
-        localStorage.setItem('sefaz_questoes_hoje', 0);
-    }
-}
-
-const inputFeitas = document.getElementById('feitas');
-const inputAcertos = document.getElementById('acertos');
-const inputErros = document.getElementById('erros');
-
-function calcErros() {
-    inputErros.value = Math.max(0, (parseInt(inputFeitas.value) || 0) - (parseInt(inputAcertos.value) || 0));
-}
-inputFeitas.addEventListener('input', calcErros);
-inputAcertos.addEventListener('input', calcErros);
-
-document.getElementById('metricasForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const feitas = parseInt(inputFeitas.value);
-    const acertos = parseInt(inputAcertos.value);
-    const disc = document.getElementById('disciplina').value;
-
-    if (acertos > feitas) { alert('Erro: Acertos maiores que feitas.'); return; }
-
-    let totalHoje = parseInt(localStorage.getItem('sefaz_questoes_hoje') || 0) + feitas;
-    localStorage.setItem('sefaz_questoes_hoje', totalHoje);
-
-    let stats = JSON.parse(localStorage.getItem('sefaz_stats')) || {};
-    if (!stats[disc]) stats[disc] = { feitas: 0, acertos: 0 };
-    stats[disc].feitas += feitas;
-    stats[disc].acertos += acertos;
-    localStorage.setItem('sefaz_stats', JSON.stringify(stats));
-
-    if (GOOGLE_API_URL !== 'https://script.google.com/macros/s/AKfycbyLPnia4-QXASaKFP_KaYeHjXY8ntqy_A4G-45XiF0vgDgAMzeWZ-uK3ErlODfDomWpVA/exec') {
-        try {
-            await fetch(GOOGLE_API_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    disciplina: disc,
-                    assunto: document.getElementById('assunto').value,
-                    feitas: feitas,
-                    acertos: acertos,
-                    erros: parseInt(inputErros.value)
-                })
-            });
-        } catch (error) {
-            console.error('Erro ao enviar para a planilha:', error);
-        }
-    }
-
-    const msg = document.getElementById('statusMsg');
-    msg.innerHTML = '<i class="fa-solid fa-circle-check"></i> Registrado com sucesso!';
-    msg.style.color = 'var(--success)';
-    setTimeout(() => { msg.innerHTML = ''; }, 3000);
-    
-    document.getElementById('assunto').value = '';
-    inputFeitas.value = ''; inputAcertos.value = ''; inputErros.value = '';
-    updateDashboard();
-});
-
-function updateDashboard() {
-    const totalHoje = parseInt(localStorage.getItem('sefaz_questoes_hoje') || 0);
-    document.getElementById('totalHojeTxt').innerText = totalHoje;
-    
-    const progressFill = document.getElementById('progressFill');
-    const badge = document.getElementById('tierBadge');
-    
-    progressFill.style.width = Math.min(100, (totalHoje / 100) * 100) + '%';
-
-    if (totalHoje >= 100) { badge.innerText = '🏆 Master'; badge.style.background = 'var(--gold)'; badge.style.color = '#333'; }
-    else if (totalHoje >= 50) { badge.innerText = '🥈 Ótimo'; badge.style.background = '#8b5cf6'; badge.style.color = '#fff'; }
-    else if (totalHoje >= 30) { badge.innerText = '🥉 Bom'; badge.style.background = 'var(--accent)'; badge.style.color = '#fff'; }
-    else { badge.innerText = 'Aquecimento'; badge.style.background = '#94a3b8'; badge.style.color = '#fff'; }
-
-    const stats = JSON.parse(localStorage.getItem('sefaz_stats')) || {};
-    const radar = document.getElementById('radarList');
-    radar.innerHTML = '';
-    let itens = 0;
-
-    for (const [disc, dados] of Object.entries(stats)) {
-        if (dados.feitas >= 10) {
-            let rend = (dados.acertos / dados.feitas) * 100;
-            if (rend < 70) {
-                itens++;
-                radar.innerHTML += `<li><span>${disc}</span><span>${rend.toFixed(1)}%</span></li>`;
-            }
-        }
-    }
-    if (itens === 0) radar.innerHTML = '<li style="background:#ecfdf5; border-color:var(--success); color:#047857;">Tudo acima de 70%! O método está funcionando.</li>';
-}
-
-function renderChart() {
-    const stats = JSON.parse(localStorage.getItem('sefaz_stats')) || {};
-    const labels = Object.keys(stats);
-    
-    if (labels.length === 0) return;
-
-    const acertosData = labels.map(disc => stats[disc].acertos);
-    const errosData = labels.map(disc => stats[disc].feitas - stats[disc].acertos);
-
-    const ctx = document.getElementById('performanceChart').getContext('2d');
-    
-    if (myChart) myChart.destroy();
-
-    myChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'Acertos', data: acertosData, backgroundColor: '#10b981', borderRadius: 4 },
-                { label: 'Erros', data: errosData, backgroundColor: '#ef4444', borderRadius: 4 }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
-            plugins: { legend: { position: 'top' } }
-        }
-    });
-}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function getPercentual(subject) { return subject.questoes ? (subject.acertos / subject.questoes) * 100 : 0; }
+function getConfianca(subject) { return Math.min(100, Math.round((1 - Math.exp(-(subject.questoes || 0) / 25)) * 100)); }
+function getParametro(subject) { if (!subject || !subject.estudado || !subject.questoes) return 'VERMELHO'; const percentage = getPercentual(subject); if (percentage < state.config.redBelow) return 'VERMELHO'; if (percentage < state.config.yellowBelow) return 'AMARELO'; return 'VERDE'; }
+function getVeiculo(subject) { const vehicles = { VERMELHO: ['Teoria base', 'video ou PDF introdutorio', 'bateria direcionada'], AMARELO: ['PDF direcionado', 'legislacao seca', 'revisao de erros', 'questoes especificas'], VERDE: ['questoes', 'estudo reverso', 'caderno de erros', 'simulado'] }; return vehicles[getParametro(subject)].join(' + '); }
+function getPriorityScore(subject) { const parameterScore = { VERMELHO: 60, AMARELO: 30, VERDE: 10 }[getParametro(subject)]; const neverStudied = subject.estudado ? 0 : 25; const debt = subject.divida ? 25 : 0; const recurrence = Math.min(20, subject.reincidencias * 5); const samplePenalty = subject.questoes < 10 ? 8 : 0; const recency = subject.ultimaSessao ? Math.min(15, Math.floor((Date.now() - new Date(subject.ultimaSessao).getTime()) / 86400000)) : 15; const weight = subject.peso == null ? 0 : Math.min(15, Number(subject.peso) * 3); return parameterScore + neverStudied + debt + recurrence + samplePenalty + recency + weight; }
+function getPriorityReason(subject) { const reasons = []; if (!subject.estudado) reasons.push('Nunca estudado'); if (getParametro(subject) === 'VERMELHO') reasons.push('Desempenho abaixo de 70%'); if (subject.divida) reasons.push('Divida da passada anterior'); if (subject.reincidencias) reasons.push(`${subject.reincidencias} erro(s) reincidente(s)`); if (subject.peso != null && subject.peso > 0) reasons.push('Peso configurado'); return reasons.length ? reasons : ['Manutencao e revisao ativa']; }
+function getNextStudyAction() { const subjects = Object.values(state.assuntos); if (!subjects.length) return null; const subject = subjects.sort((a, b) => getPriorityScore(b) - getPriorityScore(a))[0]; return { ...subject, parametro: getParametro(subject), score: getPriorityScore(subject), motivos: getPriorityReason(subject), veiculo: getVeiculo(subject), acao: getParametro(subject) === 'VERDE' ? 'Fazer questoes e revisao ativa.' : 'Estudar a base e realizar bateria direcionada.', duracao: state.config.blockMinutes }; }
+function calculateSyllabusCoverage() { const total = window.edital ? window.edital.reduce((sum, discipline) => sum + discipline.assuntos.reduce((n, topic) => n + topic.subtopicos.length, 0), 0) : Object.keys(state.assuntos).length; const studied = Object.values(state.assuntos).filter(subject => subject.estudado).length; return total ? Math.round((studied / Math.max(total, Object.keys(state.assuntos).length)) * 100) : 0; }
+function ensureSubject(disciplina, assunto, subtopico) { const id = `${slugify(disciplina)}-${slugify(assunto)}-${slugify(subtopico || 'nao-classificado')}`; if (!state.assuntos[id]) state.assuntos[id] = createSubject(id, disciplina, assunto, subtopico || 'Não classificado'); return state.assuntos[id]; }
+function addQuestions({ disciplina, assunto, subtopico, feitas, acertos, fonte = '', sessionId = null }) { const subject = ensureSubject(disciplina, assunto, subtopico); subject.questoes += feitas; subject.acertos += acertos; subject.erros = subject.questoes - subject.acertos; subject.estudado = true; subject.ultimaSessao = new Date().toISOString(); subject.ultimaAfericao = subject.ultimaSessao; subject.passadaAtual = state.mvt.passadaAtual; subject.historico.push({ passada: state.mvt.passadaAtual, questoes: feitas, acertos, erros: feitas - acertos, fonte, data: subject.ultimaSessao }); state.daily.questions += feitas; state.pendingSync.push({ disciplina, assunto, feitas, acertos, erros: feitas - acertos, subtopico: subtopico || 'Não classificado', fonte, sessionId }); saveState(); return subject; }
+async function syncLegacy(payload) { if (!GOOGLE_API_URL || GOOGLE_API_URL === 'COLE_SUA_URL_DO_APPS_SCRIPT_AQUI' || GOOGLE_API_URL === LEGACY_API_URL) return false; try { await fetch(GOOGLE_API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); return true; } catch (error) { console.error('Sincronizacao indisponivel; dados mantidos localmente.', error); return false; } }
+function updateCountdown() { const days = Math.max(0, Math.ceil((new Date(`${state.config.examDate}T00:00:00`) - new Date()) / 86400000)); const element = document.getElementById('daysLeft'); if (element) element.textContent = days; }
+function setText(id, value) { const element = document.getElementById(id); if (element) element.textContent = value; }
+function renderDashboard() { const subjects = Object.values(state.assuntos); const counts = { VERMELHO: 0, AMARELO: 0, VERDE: 0 }; subjects.forEach(subject => { counts[getParametro(subject)] += 1; }); setText('totalHojeTxt', state.daily.questions); setText('countRed', counts.VERMELHO); setText('countYellow', counts.AMARELO); setText('countGreen', counts.VERDE); setText('coverageValue', `${calculateSyllabusCoverage()}%`); setText('debtValue', subjects.filter(subject => subject.divida).length); setText('passadaValue', `Passada ${state.mvt.passadaAtual}`); const progress = document.getElementById('progressFill'); if (progress) progress.style.width = `${calculateSyllabusCoverage()}%`; const action = getNextStudyAction(); const actionBox = document.getElementById('nextAction'); if (actionBox && action) { actionBox.innerHTML = `<span class="status-label ${action.parametro.toLowerCase()}">${action.parametro}</span><h3>${action.disciplina}</h3><p><strong>${action.assunto}</strong> &rarr; ${action.subtopico}</p><div class="action-stats"><b>${getPercentual(action).toFixed(1)}%</b><span>${action.questoes} questoes</span><span>${action.acertos} acertos</span><span>${action.erros} erros</span></div><p class="muted">${action.motivos.map(reason => `⚠ ${reason}`).join(' &nbsp; ')}</p><p><strong>Veiculo:</strong> ${action.veiculo}</p><button class="btn primary" id="startRecommended"><i class="fa-solid fa-play"></i> Iniciar bloco</button>`; document.getElementById('startRecommended').addEventListener('click', () => { state.timer.subjectId = action.id; saveState(); switchTab('timer'); renderTimer(); }); } const radar = document.getElementById('radarList'); if (radar) radar.innerHTML = subjects.filter(subject => getParametro(subject) !== 'VERDE').sort((a, b) => getPriorityScore(b) - getPriorityScore(a)).slice(0, 8).map(subject => `<li><span>${subject.assunto}</span><span>${getParametro(subject)} · ${getPercentual(subject).toFixed(0)}%</span></li>`).join('') || '<li>Nenhum assunto cadastrado ainda.</li>'; }
+function switchTab(target) { document.querySelectorAll('.menu-btn').forEach(button => button.classList.toggle('active', button.dataset.target === target)); document.querySelectorAll('.tab-content').forEach(section => section.classList.toggle('active', section.id === target)); }
+function setupNavigation() { document.querySelectorAll('.menu-btn').forEach(button => button.addEventListener('click', () => { switchTab(button.dataset.target); if (button.dataset.target === 'history') renderChart(); })); }
+function formatTime(seconds) { return [Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60].map(value => String(value).padStart(2, '0')).join(':'); }
+function renderTimer() { const block = studyBlocks[state.mvt.blocoAtual]; const elapsed = state.config.blockMinutes * 60 - state.timer.remainingSeconds; const blockProgress = Math.max(0, Math.min(1, elapsed / (state.config.blockMinutes * 60))); const cycleProgress = Math.min(100, ((state.mvt.blocoAtual + blockProgress) / studyBlocks.length) * 100); setText('currentBlockTitle', `Bloco ${state.mvt.blocoAtual + 1}: ${block.title}`); setText('currentBlockDesc', block.desc); setText('timerDisplay', formatTime(state.timer.remainingSeconds)); setText('cyclePosition', `Passada ${state.mvt.passadaAtual} · Ciclo ${state.mvt.cicloAtual} · Bloco ${state.mvt.blocoAtual + 1}`); setText('cycleProgressValue', `${cycleProgress.toFixed(0)}% do ciclo`); const progress = document.getElementById('cycleProgressFill'); if (progress) progress.style.width = `${cycleProgress}%`; const button = document.getElementById('btnStartTimer'); if (button) button.innerHTML = state.timer.running ? '<i class="fa-solid fa-pause"></i> Pausar foco' : '<i class="fa-solid fa-play"></i> Iniciar bloco'; }
+function toggleTimer() { state.timer.running = !state.timer.running; state.timer.startedAt = state.timer.running ? new Date().toISOString() : state.timer.startedAt; saveState(); clearInterval(timerInterval); if (state.timer.running) timerInterval = setInterval(() => { state.timer.remainingSeconds = Math.max(0, state.timer.remainingSeconds - 1); if (state.timer.remainingSeconds === 0) { state.timer.running = false; clearInterval(timerInterval); alarmSound.play().catch(() => {}); alert('Bloco concluido. Registre a sessao para atualizar o MVT.'); } renderTimer(); saveState(); }, 1000); renderTimer(); }
+function changeBlock(direction) { clearInterval(timerInterval); state.timer.running = false; const wasFirstBlock = state.mvt.blocoAtual === 0; const wasLastBlock = state.mvt.blocoAtual === studyBlocks.length - 1; state.mvt.blocoAtual = (state.mvt.blocoAtual + direction + studyBlocks.length) % studyBlocks.length; if (direction > 0 && wasLastBlock) state.mvt.cicloAtual += 1; if (direction < 0 && wasFirstBlock) state.mvt.cicloAtual = Math.max(1, state.mvt.cicloAtual - 1); state.timer.remainingSeconds = state.config.blockMinutes * 60; state.timer.startedAt = null; saveState(); renderTimer(); }
+function setupForm() { const form = document.getElementById('metricasForm'); if (!form) return; const updateErrors = () => setText('erros', Math.max(0, (Number(document.getElementById('feitas').value) || 0) - (Number(document.getElementById('acertos').value) || 0))); document.getElementById('feitas').addEventListener('input', updateErrors); document.getElementById('acertos').addEventListener('input', updateErrors); form.addEventListener('submit', async event => { event.preventDefault(); const feitas = Number(document.getElementById('feitas').value); const acertos = Number(document.getElementById('acertos').value); if (acertos > feitas) return alert('Acertos nao podem ser maiores que questoes.'); const disciplina = document.getElementById('disciplina').value; const assunto = document.getElementById('assunto').value.trim(); const subtopico = document.getElementById('subtopico')?.value.trim() || 'Não classificado'; const subject = addQuestions({ disciplina, assunto, subtopico, feitas, acertos, fonte: document.getElementById('fonte')?.value || '' }); const synced = await syncLegacy({ disciplina, assunto, feitas, acertos, erros: feitas - acertos }); const message = document.getElementById('statusMsg'); message.textContent = `${getParametro(subject)} · ${getVeiculo(subject)}${synced ? ' · sincronizado' : ' · salvo localmente'}`; message.style.color = getParametro(subject) === 'VERDE' ? 'var(--success)' : 'var(--accent)'; form.reset(); setText('erros', '0'); renderDashboard(); renderChart(); }); }
+function setupCycle() { document.getElementById('btnStartTimer')?.addEventListener('click', toggleTimer); document.getElementById('btnNextBlock')?.addEventListener('click', () => changeBlock(1)); document.getElementById('btnPrevBlock')?.addEventListener('click', () => changeBlock(-1)); }
+function renderChart() { const canvas = document.getElementById('performanceChart'); if (!canvas || typeof Chart === 'undefined') return; const subjects = Object.values(state.assuntos); if (myChart) myChart.destroy(); myChart = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: subjects.map(subject => subject.assunto), datasets: [{ label: 'Acertos', data: subjects.map(subject => subject.acertos), backgroundColor: '#10b981' }, { label: 'Erros', data: subjects.map(subject => subject.erros), backgroundColor: '#ef4444' }] }, options: { responsive: true, scales: { y: { beginAtZero: true } } } }); }
+document.addEventListener('DOMContentLoaded', () => { state = migrateState(); const today = new Date().toLocaleDateString(); if (state.daily.date !== today) { state.daily = { date: today, questions: 0 }; saveState(); } updateCountdown(); setText('motivationalQuote', `"${quotes[Math.floor(Math.random() * quotes.length)]}"`); setupNavigation(); setupForm(); setupCycle(); renderDashboard(); renderTimer(); renderChart(); });
+window.MVT = { getParametro, getConfianca, getVeiculo, getPriorityScore, getPriorityReason, getNextStudyAction, calculateSyllabusCoverage, migrateState };
