@@ -1,13 +1,313 @@
-// Exemplo de como o seu JS no frontend fará a requisição
-async function enviarMetricas(dados) {
-  const urlApi = 'https://script.google.com/macros/s/AKfycbyLPnia4-QXASaKFP_KaYeHjXY8ntqy_A4G-45XiF0vgDgAMzeWZ-uK3ErlODfDomWpVA/exec';
-  
-  await fetch(urlApi, {
-    method: 'POST',
-    mode: 'no-cors', // Evita problemas de CORS no frontend simples
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(dados)
-  });
-  
-  alert('Métricas salvas com sucesso!');
-}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Sefaz SC - TI</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --text-color: #333333;
+            --border-radius: 8px;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --success-color: #27ae60;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+
+        body {
+            background-color: var(--bg-color); color: var(--text-color);
+            display: flex; justify-content: center; padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg); padding: 25px;
+            border-radius: var(--border-radius); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%; max-width: 450px;
+        }
+
+        h2 { text-align: center; color: var(--primary-color); margin-bottom: 20px; font-size: 1.4rem; }
+
+        /* Gamificação - Meta Diária */
+        .daily-goal {
+            background-color: #f8f9fa; border: 1px solid #e9ecef;
+            padding: 15px; border-radius: var(--border-radius); margin-bottom: 20px; text-align: center;
+        }
+        .daily-goal h3 { font-size: 1rem; color: var(--primary-color); margin-bottom: 10px; }
+        .progress-bar { background-color: #e0e0e0; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; margin-bottom: 10px; }
+        .progress-fill { height: 100%; background-color: var(--accent-color); width: 0%; transition: width 0.5s ease; }
+        .tier-badge { display: inline-block; padding: 5px 12px; border-radius: 15px; font-weight: bold; font-size: 0.85rem; color: #fff; }
+        .tier-start { background-color: #95a5a6; }
+        .tier-bom { background-color: #3498db; }
+        .tier-otimo { background-color: #9b59b6; }
+        .tier-master { background-color: #f1c40f; color: #333; box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+
+        /* Alerta de Foco */
+        .radar-box { margin-bottom: 20px; }
+        .radar-title { font-size: 0.95rem; font-weight: bold; color: var(--primary-color); margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        .radar-list { list-style: none; font-size: 0.85rem; }
+        .radar-item { background-color: #fdeaea; border-left: 4px solid var(--danger-color); padding: 8px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; }
+        .radar-good { font-size: 0.85rem; color: var(--success-color); font-weight: bold; text-align: center; }
+
+        /* Formulário */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.85rem; color: var(--primary-color); }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 0.95rem; }
+        input:focus, select:focus { border-color: var(--accent-color); outline: none; }
+        .row { display: flex; gap: 10px; }
+        .row .form-group { flex: 1; }
+        input[readonly] { background-color: #e9ecef; cursor: not-allowed; color: var(--danger-color); font-weight: bold; }
+        
+        button {
+            width: 100%; padding: 12px; background-color: var(--accent-color); color: white;
+            border: none; border-radius: 5px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.3s;
+        }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        .status-msg { text-align: center; margin-top: 10px; font-size: 0.85rem; font-weight: bold; min-height: 20px; }
+        .success { color: var(--success-color); } .error { color: var(--danger-color); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Painel Sefaz SC 🚀</h2>
+
+        <!-- Gamificação -->
+        <div class="daily-goal">
+            <h3>Meta Diária de Questões</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p style="font-size: 0.9rem; margin-bottom: 5px;">Total hoje: <strong id="totalHojeTxt">0</strong></p>
+            <div id="tierBadge" class="tier-badge tier-start">Aquecimento</div>
+            <p style="font-size: 0.75rem; color: #7f8c8d; margin-top: 5px;">30: Bom | 50: Ótimo | 100: Master</p>
+        </div>
+
+        <!-- Radar de Foco (< 70%) -->
+        <div class="radar-box" id="radarBox">
+            <div class="radar-title">⚠️ Radar de Atenção (< 70%)</div>
+            <ul class="radar-list" id="radarList">
+                <!-- Preenchido via JS -->
+            </ul>
+        </div>
+        
+        <form id="metricasForm">
+            <div class="form-group">
+                <label for="disciplina">Disciplina</label>
+                <select id="disciplina" required>
+                    <option value="" disabled selected>Selecione a matéria...</option>
+                    <option value="Finanças Públicas">Finanças Públicas</option>
+                    <option value="Direito Administrativo">Direito Administrativo</option>
+                    <option value="Direito Constitucional">Direito Constitucional</option>
+                    <option value="Legislação SC">Legislação SC</option>
+                    <option value="Língua Portuguesa">Língua Portuguesa</option>
+                    <option value="Raciocínio Lógico">Raciocínio Lógico (RLM)</option>
+                    <option value="Estatística">Estatística</option>
+                    <option value="Governança de TI">Governança de TI</option>
+                    <option value="Eng. de Software">Engenharia de Software</option>
+                    <option value="Bancos de Dados / SQL">Bancos de Dados / SQL</option>
+                    <option value="Engenharia de Dados">Engenharia de Dados</option>
+                    <option value="Ciência de Dados / IA">Ciência de Dados / IA</option>
+                    <option value="Infra / Redes / Cloud">Infra e Nuvem</option>
+                    <option value="Segurança da Informação">Segurança da Informação</option>
+                    <option value="Auditoria de TI">Auditoria de TI</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="assunto">Assunto Específico</label>
+                <input type="text" id="assunto" placeholder="Ex: Licitações, APF..." required>
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="feitas">Feitas</label>
+                    <input type="number" id="feitas" min="1" placeholder="Qtd" required>
+                </div>
+                <div class="form-group">
+                    <label for="acertos">Acertos</label>
+                    <input type="number" id="acertos" min="0" placeholder="Qtd" required>
+                </div>
+                <div class="form-group">
+                    <label for="erros">Erros</label>
+                    <input type="number" id="erros" readonly placeholder="Auto">
+                </div>
+            </div>
+
+            <button type="submit" id="btnSubmit">Registrar Bateria</button>
+            <div id="statusMsg" class="status-msg"></div>
+        </form>
+    </div>
+
+    <script>
+        // ATENÇÃO: COLE SUA URL DO GOOGLE AQUI
+        const GOOGLE_API_URL = 'COLE_SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI';
+
+        const form = document.getElementById('metricasForm');
+        const inputFeitas = document.getElementById('feitas');
+        const inputAcertos = document.getElementById('acertos');
+        const inputErros = document.getElementById('erros');
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            verificarViradaDeDia();
+            atualizarDashboardLocal();
+        });
+
+        // Autocomplete de Erros
+        function calcularErros() {
+            const feitas = parseInt(inputFeitas.value) || 0;
+            const acertos = parseInt(inputAcertos.value) || 0;
+            inputErros.value = feitas >= acertos ? feitas - acertos : 0;
+        }
+        inputFeitas.addEventListener('input', calcularErros);
+        inputAcertos.addEventListener('input', calcularErros);
+
+        // --- LÓGICA LOCAL (GAMIFICAÇÃO E RADAR) ---
+        function verificarViradaDeDia() {
+            const hoje = new Date().toLocaleDateString();
+            const dataSalva = localStorage.getItem('sefaz_data');
+            if (dataSalva !== hoje) {
+                localStorage.setItem('sefaz_data', hoje);
+                localStorage.setItem('sefaz_questoes_hoje', 0);
+            }
+        }
+
+        function salvarProgressoLocal(disciplina, feitas, acertos) {
+            // Atualiza Questões de Hoje
+            let totalHoje = parseInt(localStorage.getItem('sefaz_questoes_hoje') || 0);
+            totalHoje += feitas;
+            localStorage.setItem('sefaz_questoes_hoje', totalHoje);
+
+            // Atualiza Histórico da Disciplina
+            let stats = JSON.parse(localStorage.getItem('sefaz_stats')) || {};
+            if (!stats[disciplina]) stats[disciplina] = { feitas: 0, acertos: 0 };
+            stats[disciplina].feitas += feitas;
+            stats[disciplina].acertos += acertos;
+            localStorage.setItem('sefaz_stats', JSON.stringify(stats));
+
+            atualizarDashboardLocal();
+        }
+
+        function atualizarDashboardLocal() {
+            // Renderiza Meta Diária
+            const totalHoje = parseInt(localStorage.getItem('sefaz_questoes_hoje') || 0);
+            document.getElementById('totalHojeTxt').innerText = totalHoje;
+            
+            const progressFill = document.getElementById('progressFill');
+            const tierBadge = document.getElementById('tierBadge');
+            
+            // Calcula barra (máximo visual é 100)
+            let pctBarra = (totalHoje / 100) * 100;
+            if (pctBarra > 100) pctBarra = 100;
+            progressFill.style.width = pctBarra + '%';
+
+            // Define o Nível (Tier)
+            tierBadge.className = 'tier-badge';
+            if (totalHoje >= 100) {
+                tierBadge.innerText = '🏆 Concurseiro Master';
+                tierBadge.classList.add('tier-master');
+            } else if (totalHoje >= 50) {
+                tierBadge.innerText = '🥈 Desempenho Ótimo';
+                tierBadge.classList.add('tier-otimo');
+            } else if (totalHoje >= 30) {
+                tierBadge.innerText = '🥉 Desempenho Bom';
+                tierBadge.classList.add('tier-bom');
+            } else {
+                tierBadge.innerText = 'Aquecimento...';
+                tierBadge.classList.add('tier-start');
+            }
+
+            // Renderiza Radar de Atenção (< 70%)
+            const stats = JSON.parse(localStorage.getItem('sefaz_stats')) || {};
+            const radarList = document.getElementById('radarList');
+            radarList.innerHTML = '';
+            let itensAlerta = 0;
+
+            for (const [disc, dados] of Object.entries(stats)) {
+                if (dados.feitas >= 10) { // Só avalia se tiver feito pelo menos 10 questões
+                    let rendimento = (dados.acertos / dados.feitas) * 100;
+                    if (rendimento < 70) {
+                        itensAlerta++;
+                        radarList.innerHTML += `
+                            <li class="radar-item">
+                                <span>${disc}</span>
+                                <strong>${rendimento.toFixed(1)}%</strong>
+                            </li>
+                        `;
+                    }
+                }
+            }
+
+            if (itensAlerta === 0 && Object.keys(stats).length > 0) {
+                radarList.innerHTML = '<p class="radar-good">Tudo acima de 70%! Continue assim. 💪</p>';
+            } else if (Object.keys(stats).length === 0) {
+                radarList.innerHTML = '<p style="text-align:center; font-size:0.85rem; color:#7f8c8d;">Faça baterias para gerar estatísticas.</p>';
+            }
+        }
+
+        // --- SUBMISSÃO ---
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const feitas = parseInt(inputFeitas.value);
+            const acertos = parseInt(inputAcertos.value);
+            const disc = document.getElementById('disciplina').value;
+
+            if (acertos > feitas) {
+                showMessage('Erro: Acertos maiores que feitas!', 'error');
+                return;
+            }
+
+            const dados = {
+                disciplina: disc,
+                assunto: document.getElementById('assunto').value,
+                feitas: feitas,
+                acertos: acertos,
+                erros: parseInt(inputErros.value)
+            };
+
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = 'Enviando...';
+
+            try {
+                if (GOOGLE_API_URL !== 'https://script.google.com/macros/s/AKfycbyLPnia4-QXASaKFP_KaYeHjXY8ntqy_A4G-45XiF0vgDgAMzeWZ-uK3ErlODfDomWpVA/exec') {
+                    await fetch(GOOGLE_API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dados)
+                    });
+                }
+                
+                salvarProgressoLocal(disc, feitas, acertos);
+                showMessage('Bateria registrada com sucesso!', 'success');
+                
+                // Reseta apenas os campos numéricos e assunto
+                document.getElementById('assunto').value = '';
+                inputFeitas.value = '';
+                inputAcertos.value = '';
+                inputErros.value = '';
+                
+            } catch (error) {
+                showMessage('Erro ao enviar dados.', 'error');
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = 'Registrar Bateria';
+            }
+        });
+
+        function showMessage(text, type) {
+            const statusMsg = document.getElementById('statusMsg');
+            statusMsg.textContent = text;
+            statusMsg.className = 'status-msg ' + type;
+            if (type === 'success') setTimeout(() => { statusMsg.textContent = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>
