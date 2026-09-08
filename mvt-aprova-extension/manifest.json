@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "MVT Captura Aprova",
+  "version": "1.2.0",
+  "description": "Envia uma pagina de questoes do Aprova para o MVT.",
+  "permissions": ["tabs", "scripting"],
+  "host_permissions": [
+    "https://www.aprovaconcursos.com.br/*",
+    "https://aprovaconcursos.com.br/*",
+    "http://127.0.0.1:8765/*",
+    "http://localhost:8765/*",
+    "https://*.github.io/*",
+    "file:///*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.aprovaconcursos.com.br/*",
+        "https://aprovaconcursos.com.br/*"
+      ],
+      "js": ["aprova-content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://127.0.0.1:8765/*",
+        "http://localhost:8765/*",
+        "https://*.github.io/*",
+        "file:///*"
+      ],
+      "js": ["mvt-content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "MVT Captura Aprova"
+  }
+}
