@@ -196,11 +196,29 @@ async function syncLegacy(payload) {
 
 function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
 function setText(id, value) { const element = document.getElementById(id); if (element) element.textContent = value; }
+function getNextContest() {
+    const contests = (state.profile?.contests || []).filter(contest => contest.date);
+    if (!contests.length) return null;
+    const today = new Date().setHours(0, 0, 0, 0);
+    const upcoming = contests
+        .map(contest => ({ ...contest, timestamp: new Date(`${contest.date}T00:00:00`).getTime() }))
+        .filter(contest => contest.timestamp >= today)
+        .sort((a, b) => a.timestamp - b.timestamp);
+    return upcoming[0] || contests.sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+}
 function switchTab(target) {
     document.querySelectorAll('.menu-btn').forEach(button => button.classList.toggle('active', button.dataset.target === target));
     document.querySelectorAll('.tab-content').forEach(section => section.classList.toggle('active', section.id === target));
 }
-function updateCountdown() { const days = Math.max(0, Math.ceil((new Date(`${state.config.examDate}T00:00:00`) - new Date()) / 86400000)); const element = document.getElementById('daysLeft'); if (element) element.textContent = days; }
+function updateCountdown() {
+    const nextContest = getNextContest();
+    const examDate = nextContest?.date || state.config.examDate;
+    const days = Math.max(0, Math.ceil((new Date(`${examDate}T00:00:00`) - new Date()) / 86400000));
+    const element = document.getElementById('daysLeft'); if (element) element.textContent = days;
+    const dateLabel = document.getElementById('countdownContestDate');
+    if (dateLabel) dateLabel.textContent = new Date(`${examDate}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+    setText('countdownContestName', nextContest ? nextContest.name : 'Nenhum concurso cadastrado');
+}
 
 /* ---------- Central de comando ---------- */
 
@@ -542,7 +560,7 @@ function setupErrors() {
         const error = createErrorRecord({ discipline: document.getElementById('errorDiscipline').value.trim(), subject, subtopic: document.getElementById('errorSubtopic').value.trim(), cause: document.getElementById('errorCause').value, correction: document.getElementById('errorCorrection').value.trim(), note: document.getElementById('errorNote').value.trim() });
         error.reincidencias = sameSubject.length;
         state.errors.push(error);
-        const tracked = ensureSubject(error.discipline, error.subject, error.subtopic || 'Não classificado');
+        const tracked = ensureSubject(error.disciplina, error.subject, error.subtopic || 'Não classificado');
         tracked.reincidencias += sameSubject.length ? 1 : 0; tracked.divida = true; tracked.dividaOrigem = 'Erro registrado no caderno';
         saveState(); form.reset(); setText('errorStatus', 'Erro registrado localmente para revisão.'); renderErrors(); renderDashboard();
     });
@@ -697,8 +715,21 @@ function renderProfile() {
     if (sidebarAvatar) { sidebarAvatar.style.backgroundImage = state.profile.photo ? `url(${state.profile.photo})` : ''; sidebarAvatar.innerHTML = state.profile.photo ? '' : '<i class="fa-solid fa-user"></i>'; }
     const nameInput = document.getElementById('profileNameInput'); if (nameInput && document.activeElement !== nameInput) nameInput.value = state.profile.name || '';
     const list = document.getElementById('contestList');
-    if (list) list.innerHTML = state.profile.contests.map((contest, index) => `<li><div><strong>${escapeHtml(contest.name)}</strong><small>${contest.date ? new Date(`${contest.date}T00:00:00`).toLocaleDateString() : 'Sem data definida'}</small></div><button type="button" class="btn secondary" data-remove-contest="${index}"><i class="fa-solid fa-trash"></i></button></li>`).join('') || '<li class="empty-state">Nenhum concurso adicionado ainda.</li>';
+    const formatDate = value => value ? new Date(`${value}T00:00:00`).toLocaleDateString() : 'Não definida';
+    if (list) list.innerHTML = state.profile.contests.map((contest, index) => `<li>
+        <div class="contest-info">
+            <strong>${escapeHtml(contest.name)}</strong>
+            <small>Prova: ${formatDate(contest.date)}</small>
+            <small>Inscrições até: ${formatDate(contest.inscricaoFim)}</small>
+            <small>Gabarito: ${formatDate(contest.gabarito)}</small>
+            <small>Resultado final: ${formatDate(contest.resultado)}</small>
+            ${contest.site ? `<a class="contest-site-link" href="${escapeHtml(contest.site)}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square"></i> Site de inscrição</a>` : ''}
+            ${contest.edital ? `<a class="contest-edital-link" href="${contest.edital}" target="_blank" rel="noopener noreferrer" download="${escapeHtml(contest.editalName || 'edital')}"><i class="fa-solid fa-paperclip"></i> Ver edital anexado</a>` : ''}
+        </div>
+        <button type="button" class="btn secondary" data-remove-contest="${index}"><i class="fa-solid fa-trash"></i></button>
+    </li>`).join('') || '<li class="empty-state">Nenhum concurso adicionado ainda.</li>';
     updateSaveIndicator();
+    updateCountdown();
 }
 function setupProfile() {
     const nameInput = document.getElementById('profileNameInput');
@@ -718,9 +749,23 @@ function setupProfile() {
         event.preventDefault();
         const name = document.getElementById('contestNameInput').value.trim();
         const date = document.getElementById('contestDateInput').value;
+        const site = document.getElementById('contestSiteInput')?.value.trim() || '';
+        const inscricaoFim = document.getElementById('contestInscricaoFimInput')?.value || '';
+        const gabarito = document.getElementById('contestGabaritoInput')?.value || '';
+        const resultado = document.getElementById('contestResultadoInput')?.value || '';
+        const editalFile = document.getElementById('contestEditalInput')?.files?.[0];
         if (!name) return;
-        state.profile.contests.push({ name, date });
-        saveState(); contestForm.reset(); renderProfile();
+        const pushContest = editalData => {
+            state.profile.contests.push({ name, date, site, inscricaoFim, gabarito, resultado, edital: editalData?.dataUrl || '', editalName: editalData?.fileName || '' });
+            saveState(); contestForm.reset(); renderProfile();
+        };
+        if (editalFile) {
+            const reader = new FileReader();
+            reader.onload = () => pushContest({ dataUrl: reader.result, fileName: editalFile.name });
+            reader.readAsDataURL(editalFile);
+        } else {
+            pushContest(null);
+        }
     });
     contestList?.addEventListener('click', event => {
         const button = event.target.closest('[data-remove-contest]'); if (!button) return;

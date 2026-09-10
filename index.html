@@ -14,7 +14,12 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="logo"><i class="fa-solid fa-compass"></i><span>MVT Command</span></div>
-            <div class="countdown-widget"><div class="countdown-number" id="daysLeft">--</div><div class="countdown-text">Dias para a prova</div><div class="countdown-date"><i class="fa-regular fa-calendar"></i> 22 Nov 2026</div></div>
+            <div class="countdown-widget">
+                <div class="countdown-number" id="daysLeft">--</div>
+                <div class="countdown-text">Dias para a prova</div>
+                <div class="countdown-date"><i class="fa-regular fa-calendar"></i> <span id="countdownContestDate">22 Nov 2026</span></div>
+                <div class="countdown-contest-name" id="countdownContestName">Nenhum concurso cadastrado</div>
+            </div>
             <nav class="menu" aria-label="Navegação principal">
                 <button class="menu-btn" data-target="dashboard"><i class="fa-solid fa-crosshairs"></i> Central de comando</button>
                 <button class="menu-btn active" data-target="timer"><i class="fa-solid fa-stopwatch"></i> Modo foco</button>
@@ -192,23 +197,51 @@
                 <header><span class="eyebrow">VOCÊ</span><h1>Central de perfil</h1><p>Seus dados, os concursos que pretende disputar e o backup do progresso.</p></header>
                 <div class="cards-grid profile-grid">
                     <div class="card profile-card">
-                        <div class="profile-photo-row">
-                            <div class="profile-avatar" id="profileAvatarDisplay"><i class="fa-solid fa-user"></i></div>
-                            <div class="profile-photo-actions">
-                                <label class="btn secondary" for="profilePhotoInput"><i class="fa-solid fa-camera"></i> Alterar foto</label>
-                                <input type="file" id="profilePhotoInput" accept="image/*" hidden>
+                        <fieldset class="form-fieldset">
+                            <legend>Foto e nome</legend>
+                            <div class="profile-photo-row">
+                                <div class="profile-avatar" id="profileAvatarDisplay"><i class="fa-solid fa-user"></i></div>
+                                <div class="profile-photo-actions">
+                                    <label class="btn secondary" for="profilePhotoInput"><i class="fa-solid fa-camera"></i> Alterar foto</label>
+                                    <input type="file" id="profilePhotoInput" name="profilePhotoInput" accept="image/*" hidden>
+                                </div>
                             </div>
-                        </div>
-                        <div class="form-group"><label for="profileNameInput">Seu nome</label><input id="profileNameInput" placeholder="Como quer ser chamado(a)?"></div>
-                        <h2 id="profileNameDisplay">Defina seu nome</h2>
-                        <p class="muted" id="lastSavedInfo">Nenhum salvamento registrado ainda.</p>
+                            <div class="form-group">
+                                <label for="profileNameInput">Seu nome</label>
+                                <input id="profileNameInput" name="profileNameInput" placeholder="Como quer ser chamado(a)?">
+                            </div>
+                            <h2 id="profileNameDisplay">Defina seu nome</h2>
+                        </fieldset>
+                        <fieldset class="form-fieldset">
+                            <legend>Status</legend>
+                            <p class="muted" id="lastSavedInfo">Nenhum salvamento registrado ainda.</p>
+                        </fieldset>
                     </div>
                     <div class="card">
                         <h3><i class="fa-solid fa-graduation-cap"></i> Concursos que irei participar</h3>
-                        <form id="contestForm" class="row">
-                            <div class="form-group"><label for="contestNameInput">Concurso</label><input id="contestNameInput" required placeholder="Ex.: SEFAZ SC - Auditor Fiscal TI"></div>
-                            <div class="form-group"><label for="contestDateInput">Data da prova</label><input type="date" id="contestDateInput"></div>
-                            <button type="submit" class="btn primary"><i class="fa-solid fa-plus"></i></button>
+                        <form id="contestForm" class="contest-form">
+                            <fieldset class="form-fieldset">
+                                <legend>Identificação</legend>
+                                <div class="row">
+                                    <div class="form-group"><label for="contestNameInput">Concurso</label><input id="contestNameInput" required placeholder="Ex.: SEFAZ SC - Auditor Fiscal TI"></div>
+                                    <div class="form-group"><label for="contestEditalInput">Edital (anexo)</label><input type="file" id="contestEditalInput" accept="application/pdf,image/*"></div>
+                                </div>
+                                <div class="row">
+                                    <div class="form-group full-width"><label for="contestSiteInput">Site de inscrição</label><input type="url" id="contestSiteInput" placeholder="https://..."></div>
+                                </div>
+                            </fieldset>
+                            <fieldset class="form-fieldset">
+                                <legend>Datas importantes</legend>
+                                <div class="row">
+                                    <div class="form-group"><label for="contestInscricaoFimInput">Fim das inscrições</label><input type="date" id="contestInscricaoFimInput"></div>
+                                    <div class="form-group"><label for="contestDateInput">Data da prova</label><input type="date" id="contestDateInput"></div>
+                                </div>
+                                <div class="row">
+                                    <div class="form-group"><label for="contestGabaritoInput">Data do gabarito</label><input type="date" id="contestGabaritoInput"></div>
+                                    <div class="form-group"><label for="contestResultadoInput">Data do resultado final</label><input type="date" id="contestResultadoInput"></div>
+                                </div>
+                            </fieldset>
+                            <button type="submit" class="btn primary full-width"><i class="fa-solid fa-plus"></i> Adicionar concurso</button>
                         </form>
                         <ul id="contestList" class="contest-list"></ul>
                     </div>
@@ -226,5 +259,6 @@
         </main>
     </div>
     <script src="app.js"></script>
+    <script src="profile.js"></script>
 </body>
 </html>
